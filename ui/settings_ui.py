@@ -23,13 +23,10 @@ class SettingsDashboard(QWidget):
         form_ui = QFormLayout(group_ui)
         
         self.combo_theme = QComboBox()
-        self.combo_theme.addItems(["深色模式 (Dark)", "浅色模式 (Light)", "跟随系统 (System)"])
-        
-        self.combo_lang = QComboBox()
-        self.combo_lang.addItems(["简体中文 (zh_CN)", "English (en_US)"])
+        # 简化内部标识，便于后续直接解析
+        self.combo_theme.addItems(["Dark", "Light", "System"])
         
         form_ui.addRow("系统主题:", self.combo_theme)
-        form_ui.addRow("显示语言:", self.combo_lang)
 
         # 2. 默认工程参数组
         group_project = QGroupBox("工程缺省参数 (Project Defaults)")
@@ -88,8 +85,7 @@ class SettingsDashboard(QWidget):
 
     def _load_config(self):
         """将 QSettings 中的持久化数据反推回 UI 控件"""
-        self.combo_theme.setCurrentText(self.settings.value("ui/theme", "深色模式 (Dark)"))
-        self.combo_lang.setCurrentText(self.settings.value("ui/language", "简体中文 (zh_CN)"))
+        self.combo_theme.setCurrentText(self.settings.value("ui/theme", "Dark"))
         
         default_dir = os.path.join(os.path.expanduser("~"), "DefectEngine_Output")
         self.output_dir.setText(self.settings.value("project/output_dir", default_dir))
@@ -99,8 +95,8 @@ class SettingsDashboard(QWidget):
 
     def _save_config(self):
         """序列化 UI 状态并固化至本地"""
-        self.settings.setValue("ui/theme", self.combo_theme.currentText())
-        self.settings.setValue("ui/language", self.combo_lang.currentText())
+        selected_theme = self.combo_theme.currentText()
+        self.settings.setValue("ui/theme", selected_theme)
         self.settings.setValue("project/output_dir", self.output_dir.text())
         self.settings.setValue("project/backend", self.combo_backend.currentText())
         self.settings.setValue("obs/log_level", self.combo_log_level.currentText())
@@ -108,7 +104,11 @@ class SettingsDashboard(QWidget):
         # 强制将内存中的配置写入磁盘
         self.settings.sync() 
         
-        QMessageBox.information(self, "设置已保存", "全局配置已更新。\n部分核心参数（如语言与主题）可能需要重启系统后生效。")
+        # 引入事件总线并触发动态换肤
+        from utils.signals import event_bus
+        event_bus.theme_changed.emit(selected_theme)
+        
+        QMessageBox.information(self, "设置已保存", "全局配置已更新，主题已动态应用。")
 
     def _reset_config(self):
         """高危操作防御：二次确认并清空 QSettings"""

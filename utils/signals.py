@@ -11,6 +11,9 @@ class GlobalEventBus(QObject):
     # 系统与数据库信号
     db_error = pyqtSignal(str)
     auth_success = pyqtSignal(dict)                       # 返回用户上下文 (包含 RBAC 角色)
+
+    # UI 与系统控制信号
+    theme_changed = pyqtSignal(str)                       # 主题切换信号，携带主题标识
     
 # 全局单例
 event_bus = GlobalEventBus()
