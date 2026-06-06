@@ -109,6 +109,8 @@ class ResultAnalysisDashboard(QWidget):
     def _bind_signals(self):
         self.btn_query.clicked.connect(self._execute_query)
         self.btn_export.clicked.connect(self._export_to_csv)
+        # ========== 新增：监听全局推理完成信号，实现自动刷新 ==========
+        event_bus.inference_finished.connect(self._execute_query)
 
     def _execute_query(self):
         """

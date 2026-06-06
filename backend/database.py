@@ -204,3 +204,34 @@ class DatabaseManager:
             from utils.signals import event_bus
             event_bus.db_error.emit(f"读取分析台账失败: {str(e)}")
             return {"distribution": {}, "history_rows": []}
+        
+    def save_task_record(self, task_id, throughput, defect_counts, status="完成"):
+        """
+        向数据库持久化当前推理任务的流水记录
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO tasks (
+                        task_id, throughput, crazing_count, inclusion_count, 
+                        patches_count, pitted_surface_count, rolled_in_scale_count, scratches_count, status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    task_id,
+                    throughput,
+                    defect_counts.get('crazing', 0),
+                    defect_counts.get('inclusion', 0),
+                    defect_counts.get('patches', 0),
+                    defect_counts.get('pitted_surface', 0),
+                    # 注意：NEU-DET 原数据集中常常是 rolled-in_scale，而 SQL 字段命名是 rolled_in_scale
+                    defect_counts.get('rolled-in_scale', defect_counts.get('rolled_in_scale', 0)), 
+                    defect_counts.get('scratches', 0),
+                    status
+                ))
+                conn.commit()
+                return True
+        except sqlite3.Error as e:
+            from utils.signals import event_bus
+            event_bus.db_error.emit(f"任务流水写入数据库失败: {str(e)}")
+            return False

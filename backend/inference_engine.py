@@ -5,6 +5,7 @@ import traceback
 from datetime import datetime
 from PyQt5.QtCore import QThread
 from utils.signals import event_bus
+from backend.database import DatabaseManager
 
 # 引入我们刚才编写的真实适配器
 from backend.yolo_engine import UltralyticsAdapter
@@ -29,6 +30,16 @@ class InferenceWorker(QThread):
             save_result = self.config.get('save_result', False)
             output_dir = self.config.get('output_dir', '')
             session_save_path = None
+
+            # ====== 新增：任务ID与累加器初始化 ======
+            task_id = datetime.now().strftime("Task_%Y%m%d_%H%M%S")
+            db_manager = DatabaseManager()
+            throughput_count = 0
+            defect_stats = {
+                "crazing": 0, "inclusion": 0, "patches": 0, 
+                "pitted_surface": 0, "rolled-in_scale": 0, "scratches": 0
+            }
+            # ======================================
             
             if save_result and output_dir:
                 # 按照时间戳创建独立的任务文件夹，例如: 20231025_143022_Task
@@ -57,6 +68,18 @@ class InferenceWorker(QThread):
                 if not self._is_running:
                     event_bus.inference_error.emit("推理任务已被用户主动终止。")
                     break
+
+                # ====== 新增：更新吞吐量与缺陷统计 ======
+                throughput_count += 1
+                detections = payload.get('detections', [])
+                for det in detections:
+                    cls_name = det.get('class')
+                    if cls_name in defect_stats:
+                        defect_stats[cls_name] += 1
+                    # 容错：防止模型输出下划线而丢数据
+                    elif cls_name == "rolled_in_scale":
+                        defect_stats["rolled-in_scale"] += 1
+                # ======================================
                 
                 # ================= 新增：执行落盘保存 =================
                 if save_result and session_save_path:
@@ -65,10 +88,16 @@ class InferenceWorker(QThread):
 
                 # 推送渲染数据至 UI
                 event_bus.inference_result.emit(payload)
-                
-                # 推送进度
-                current_frame = payload['frame_id'] + 1
-                event_bus.inference_progress.emit(current_frame, total_frames)
+                event_bus.inference_progress.emit(payload['frame_id'] + 1, total_frames)
+            
+            # ====== 新增：任务循环正常结束后，存入数据库 ======
+            # 根据线程状态标记任务是正常完成还是被中断
+            final_status = "完成" if self._is_running else "已终止"
+            
+            # 只要处理了哪怕一帧数据，就留下痕迹
+            if throughput_count > 0:
+                db_manager.save_task_record(task_id, throughput_count, defect_stats, final_status)
+            # ==============================================
 
         except Exception as e:
             error_trace = traceback.format_exc()
