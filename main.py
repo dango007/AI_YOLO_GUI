@@ -77,6 +77,7 @@ class ApplicationController:
                 QProgressBar { border: 1px solid #444; border-radius: 3px; text-align: center; color: white; }
                 QProgressBar::chunk { background-color: #007acc; width: 10px; }
                 QSplitter::handle { background-color: #333333; }
+                QTableCornerButton::section { background-color: #2d2d2d; border: 1px solid #444444; }
             """
             self.app.setStyleSheet(dark_qss)
             
