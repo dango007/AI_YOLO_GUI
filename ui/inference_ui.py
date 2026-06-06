@@ -4,7 +4,8 @@ from PyQt5.QtWidgets import (QWidget, QMessageBox, QVBoxLayout, QHBoxLayout,
                              QSlider, QComboBox, QRadioButton, QCheckBox,
                              QProgressBar, QTableWidget, QTableWidgetItem,
                              QFileDialog, QHeaderView, QSplitter, QFormLayout, QButtonGroup)
-from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtCore import Qt, pyqtSlot, QSettings
+import os
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QPen, QColor, QFont
 
 from backend.inference_engine import InferenceWorker
@@ -196,13 +197,23 @@ class InferenceDashboard(QWidget):
             QMessageBox.warning(self, "校验失败", "必须指定模型权重路径。")
             return
             
+        # ---------------- 新增逻辑开始 ----------------
+        # 实例化 QSettings 以读取全局配置
+        settings = QSettings("IndustrialAI", "DefectEngine")
+        # 生成与 settings_ui 一致的缺省兜底目录
+        default_dir = os.path.join(os.path.expanduser("~"), "DefectEngine_Output")
+        # 读取当前设定的输出目录
+        target_output_dir = settings.value("project/output_dir", default_dir)
+        # ---------------- 新增逻辑结束 ----------------
+
         config = {
             'source_path': self.input_path.text(),
             'model_path': self.model_path.text(),
             'conf': self.slider_conf.value() / 100.0,
             'iou': self.slider_iou.value() / 100.0,
             'hardware': self.combo_backend.currentText(),
-            'save_result': self.chk_save_res.isChecked()
+            'save_result': self.chk_save_res.isChecked(),
+            'output_dir': target_output_dir  # <--- 将提取到的路径传递给 Worker
         }
 
         # 防抖与状态扭转

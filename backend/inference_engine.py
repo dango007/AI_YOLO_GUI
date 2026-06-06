@@ -1,4 +1,8 @@
+import os
+import cv2
+import json
 import traceback
+from datetime import datetime
 from PyQt5.QtCore import QThread
 from utils.signals import event_bus
 
@@ -21,7 +25,19 @@ class InferenceWorker(QThread):
 
     def run(self):
         try:
-            # 1. 初始化引擎与预热模型 (这会阻塞当前线程，但不会卡死 UI主线程)
+            # ================= 新增：初始化落盘会话 =================
+            save_result = self.config.get('save_result', False)
+            output_dir = self.config.get('output_dir', '')
+            session_save_path = None
+            
+            if save_result and output_dir:
+                # 按照时间戳创建独立的任务文件夹，例如: 20231025_143022_Task
+                session_name = datetime.now().strftime("%Y%m%d_%H%M%S_Task")
+                session_save_path = os.path.join(output_dir, session_name)
+                os.makedirs(session_save_path, exist_ok=True)
+            # =========================================================
+
+            # 1. 初始化引擎与预热模型
             self.engine = UltralyticsAdapter(
                 model_path=self.config.get('model_path'),
                 conf_thres=self.config.get('conf', 0.5),
@@ -30,7 +46,7 @@ class InferenceWorker(QThread):
             )
             event_bus.engine_ready.emit(True, f"YOLO 模型挂载成功。算力后端: {self.engine.device}")
 
-            # 2. 获取数据源并测算总数 (用于进度条)
+            # 2. 获取数据源并测算总数
             source = self.config.get('source_path')
             total_frames = self._estimate_total_frames(source)
 
@@ -42,6 +58,11 @@ class InferenceWorker(QThread):
                     event_bus.inference_error.emit("推理任务已被用户主动终止。")
                     break
                 
+                # ================= 新增：执行落盘保存 =================
+                if save_result and session_save_path:
+                    self._save_payload(payload, session_save_path)
+                # =========================================================
+
                 # 推送渲染数据至 UI
                 event_bus.inference_result.emit(payload)
                 
@@ -50,25 +71,45 @@ class InferenceWorker(QThread):
                 event_bus.inference_progress.emit(current_frame, total_frames)
 
         except Exception as e:
-            # 捕获 YOLO 内部崩溃、显存溢出 (CUDA OOM) 或文件读取异常
             error_trace = traceback.format_exc()
             event_bus.inference_error.emit(f"推理引擎异常崩溃:\n{str(e)}\n\nTraceback:\n{error_trace}")
             
         finally:
-            # 强制显存清场
             if self.engine:
                 self.engine.release()
             event_bus.inference_finished.emit()
 
+    def _save_payload(self, payload, save_dir):
+        """
+        核心落盘逻辑：将单帧图像及检测结果序列化到本地。
+        """
+        try:
+            frame_id = payload.get('frame_id', 0)
+            image_data = payload.get('image_data') 
+            detections = payload.get('detections', [])
+            
+            # 1. 保存图像文件 (如果包含有效数据)
+            if image_data is not None:
+                # 【注意】根据 inference_ui.py 中的设定，UI层假定 image_data 是 RGB 排布的。
+                # cv2.imwrite 需要 BGR 格式。如果底层给出的本来就是 BGR，请把下面这行转换注释掉。
+                img_bgr = cv2.cvtColor(image_data, cv2.COLOR_RGB2BGR) 
+                
+                img_path = os.path.join(save_dir, f"frame_{frame_id:06d}.jpg")
+                cv2.imwrite(img_path, img_bgr)
+            
+            # 2. 保存结构化缺陷数据 (如果有检测到目标才保存，减少垃圾文件)
+            if detections:
+                json_path = os.path.join(save_dir, f"frame_{frame_id:06d}.json")
+                with open(json_path, 'w', encoding='utf-8') as f:
+                    json.dump(detections, f, ensure_ascii=False, indent=2)
+                    
+        except Exception as e:
+            # 采用静默降级：磁盘 I/O 错误（如权限不足/空间满）不应导致推理线程崩溃
+            print(f"落盘失败 (Frame {payload.get('frame_id')}): {str(e)}")
+
     def _estimate_total_frames(self, source):
-        """
-        估算任务总帧数，辅助 UI 渲染进度条。
-        (非核心业务，使用简易嗅探逻辑)
-        """
-        if source in ['0', 0]: return 0 # 实时流无总数
-        
-        import os
-        import cv2
+        # (保持原逻辑不变，cv2和os已被统一移动至顶部导入)
+        if source in ['0', 0]: return 0
         
         if os.path.isdir(source):
             valid_exts = {'.jpg', '.png', '.jpeg', '.bmp'}
