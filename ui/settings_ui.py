@@ -15,15 +15,16 @@ class SettingsDashboard(QWidget):
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(20)
+        # 增加外围留白与区块间距，提升呼吸感
+        main_layout.setContentsMargins(24, 24, 24, 24)
+        main_layout.setSpacing(24)
 
         # 1. UI 与外观设置组
         group_ui = QGroupBox("个性化与外观 (Appearance)")
         form_ui = QFormLayout(group_ui)
+        form_ui.setSpacing(16)
         
         self.combo_theme = QComboBox()
-        # 简化内部标识，便于后续直接解析
         self.combo_theme.addItems(["Dark", "Light", "System"])
         
         form_ui.addRow("系统主题:", self.combo_theme)
@@ -31,11 +32,17 @@ class SettingsDashboard(QWidget):
         # 2. 默认工程参数组
         group_project = QGroupBox("工程缺省参数 (Project Defaults)")
         form_project = QFormLayout(group_project)
+        form_project.setSpacing(16)
         
         self.output_dir = QLineEdit()
         self.output_dir.setPlaceholderText("指定检测结果与日志的默认落盘目录...")
+        
         self.btn_browse_dir = QPushButton("浏览...")
+        self.btn_browse_dir.setProperty("type", "secondary") # 赋予次级按钮样式
+        self.btn_browse_dir.setCursor(Qt.PointingHandCursor)
+        
         dir_layout = QHBoxLayout()
+        dir_layout.setSpacing(8)
         dir_layout.addWidget(self.output_dir)
         dir_layout.addWidget(self.btn_browse_dir)
         
@@ -48,6 +55,7 @@ class SettingsDashboard(QWidget):
         # 3. 可观测性设置组
         group_obs = QGroupBox("可观测性与日志 (Observability)")
         form_obs = QFormLayout(group_obs)
+        form_obs.setSpacing(16)
         
         self.combo_log_level = QComboBox()
         self.combo_log_level.addItems(["DEBUG (详尽调试)", "INFO (标准信息)", "WARNING (仅警告)", "ERROR (仅错误)"])
@@ -56,11 +64,14 @@ class SettingsDashboard(QWidget):
 
         # 4. 底部操作栏
         action_layout = QHBoxLayout()
+        
         self.btn_save = QPushButton("保存并应用 (Save & Apply)")
-        self.btn_save.setStyleSheet("background-color: #2e7d32; color: white; font-weight: bold; padding: 8px;")
+        self.btn_save.setProperty("type", "primary") # 剥离硬编码，交由 QSS 的 primary 接管
+        self.btn_save.setCursor(Qt.PointingHandCursor)
         
         self.btn_reset = QPushButton("恢复出厂设置 (Reset)")
-        self.btn_reset.setStyleSheet("background-color: #c62828; color: white; font-weight: bold; padding: 8px;")
+        self.btn_reset.setProperty("type", "danger") # 剥离硬编码，交由 QSS 的 danger 接管
+        self.btn_reset.setCursor(Qt.PointingHandCursor)
         
         action_layout.addStretch()
         action_layout.addWidget(self.btn_reset)

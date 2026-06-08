@@ -1,0 +1,384 @@
+/* =================================================================
+   浅色主题 - Light Theme (现代工业/IDE 质感)
+   色板：背景#F5F6FA 主文本#2C3E50 次级#7F8C8D
+         强调#3498DB 柔绿#2ECC71 危险#E74C3C
+   ================================================================= */
+
+/* ---------- 全局重置 ---------- */
+* {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: 13px;
+    color: #2C3E50;
+}
+
+/* 核心背景：精准定位，避免污染上层透明组件 */
+QMainWindow, QDialog, #leftPanel, #chart_container {
+    background-color: #F5F6FA;
+}
+
+QLabel {
+    background-color: transparent;
+    border: none;
+}
+
+/* ---------- 现代侧边栏 (主窗体级) ---------- */
+QListWidget#mainSidebar {
+    background-color: #FFFFFF; /* 侧边栏纯白底色，与右侧内容区形成微弱层级 */
+    border-right: 1px solid #D5D8DC;
+    border-top: none;
+    border-bottom: none;
+    border-left: none;
+    border-radius: 0px; /* 覆盖底层通用的卡片圆角 */
+    margin: 0px;
+    outline: none;
+    padding-top: 10px;
+}
+
+/* 侧边栏子项常态 */
+QListWidget#mainSidebar::item {
+    color: #7F8C8D;
+    font-size: 14px;
+    padding: 12px 20px;
+    margin: 0px;
+    border-radius: 0px;
+    border-left: 3px solid transparent; /* 预留高亮边框位置 */
+}
+
+/* 悬停态：文字加深，底色微变 */
+QListWidget#mainSidebar::item:hover {
+    color: #2C3E50;
+    background-color: #F8F9FA;
+}
+
+/* 选中态：经典左侧高亮，浅蓝背景底色 */
+QListWidget#mainSidebar::item:selected {
+    color: #3498DB;
+    background-color: #EBF5FB;
+    border-left: 3px solid #3498DB;
+    font-weight: bold;
+}
+
+/* 堆叠视图区 (消除默认边距带来的白边) */
+QStackedWidget#mainStack {
+    background-color: #F5F6FA;
+    border: none;
+}
+
+
+/* ---------- 标题样式 ---------- */
+QGroupBox::title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #3498DB; 
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 12px;
+    margin-left: 12px;
+    background-color: #FFFFFF; /* 与组框背景一致 */
+}
+
+/* ---------- QGroupBox ---------- */
+QGroupBox {
+    background-color: #FFFFFF;
+    border: 1px solid #D5D8DC;
+    border-radius: 8px;
+    margin-top: 20px;
+    padding: 16px 12px 12px 12px;
+}
+
+/* ---------- 输入控件通用 ---------- */
+QDateEdit, QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox {
+    background-color: #FFFFFF;
+    border: 1px solid #BDC3C7;
+    color: #2C3E50;
+    border-radius: 6px;
+    padding: 6px 10px;
+    min-height: 26px;
+    font-size: 13px;
+}
+QDateEdit:hover, QComboBox:hover, QLineEdit:hover, QSpinBox:hover, QDoubleSpinBox:hover {
+    border-color: #3498DB;
+}
+QDateEdit:focus, QComboBox:focus, QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+    border-color: #3498DB;
+    background-color: #EBF5FB;
+}
+
+/* ---------- 下拉控件箭头 (物理 SVG 挂载) -------- */
+QComboBox::drop-down, QDateEdit::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 28px; 
+    border-left: 1px solid #ECF0F1;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    background-color: #FAFAFA;
+}
+QComboBox::drop-down:hover, QDateEdit::drop-down:hover {
+    background-color: #F0F3F5;
+}
+
+/* 调用你在暗色模式前准备好的浅色物理 SVG 箭头 */
+QComboBox::down-arrow, QDateEdit::down-arrow {
+    image: url(assets/icons/arrow-down.svg);
+    width: 14px;
+    height: 14px;
+}
+QComboBox::down-arrow:hover, QDateEdit::down-arrow:hover {
+    image: url(assets/icons/arrow-down-hover.svg);
+}
+
+/* 下拉菜单列表容器 */
+QComboBox QAbstractItemView {
+    background-color: #FFFFFF;
+    border: 1px solid #BDC3C7;
+    border-radius: 4px;
+    selection-background-color: #3498DB;
+    selection-color: #FFFFFF;
+    outline: none;
+    padding: 4px;
+}
+QComboBox QAbstractItemView::item {
+    min-height: 28px;
+    border-radius: 4px;
+    padding-left: 5px;
+}
+
+/* ========================================================= */
+/* ---------- 按钮通用基准与层级 ---------- */
+/* ========================================================= */
+QPushButton {
+    background-color: #FFFFFF;       
+    border: 1px solid #BDC3C7;       
+    color: #2C3E50;                  
+    border-radius: 6px;
+    padding: 6px 16px;
+    font-size: 13px;
+    min-height: 30px;
+}
+QPushButton:hover {
+    background-color: #F0F3F5;
+    border-color: #95A5A6;
+}
+QPushButton:pressed {
+    background-color: #E5E8E8;
+}
+
+/* 主操作按钮 (Primary) */
+QPushButton[type="primary"] {
+    background-color: #3498DB;
+    color: #FFFFFF;
+    border: 1px solid #2980B9;
+    font-weight: bold;
+}
+QPushButton[type="primary"]:hover { background-color: #2E86C1; }
+QPushButton[type="primary"]:pressed { background-color: #2471A3; }
+
+/* 次级操作按钮 (Secondary) */
+QPushButton[type="secondary"] {
+    background-color: #FFFFFF;
+    color: #2C3E50;
+    border: 1px solid #BDC3C7;
+    font-weight: bold;
+}
+QPushButton[type="secondary"]:hover {
+    background-color: #EBF5FB;
+    border-color: #3498DB;
+    color: #3498DB;
+}
+QPushButton[type="secondary"]:pressed { background-color: #D4E6F1; }
+
+/* 危险/警告按钮 (Danger) */
+QPushButton[type="danger"] {
+    background-color: #E74C3C;
+    color: #FFFFFF;
+    border: 1px solid #C0392B;
+    font-weight: bold;
+}
+QPushButton[type="danger"]:hover { background-color: #CB4335; }
+QPushButton[type="danger"]:pressed { background-color: #B03A2E; }
+
+/* ---------- 表格 ---------- */
+QTableWidget {
+    background-color: #FFFFFF;
+    gridline-color: #ECF0F1;
+    border: 1px solid #BDC3C7;
+    border-radius: 6px;
+    selection-background-color: #3498DB;
+    selection-color: #FFFFFF;
+}
+QHeaderView::section {
+    background-color: #F0F3F5;
+    color: #2C3E50;
+    padding: 8px 4px;
+    border: none;
+    border-bottom: 2px solid #3498DB;
+    font-weight: bold;
+}
+QTableCornerButton::section { 
+    background-color: #F0F3F5; 
+    border: 1px solid #BDC3C7; 
+}
+QTableWidget::item {
+    padding: 8px;
+    border-bottom: 1px solid #F2F3F4;
+}
+QTableWidget::item:selected {
+    background-color: #3498DB;
+    color: #FFFFFF;
+}
+
+/* ---------- 滚动条 (亮色系定制) ---------- */
+QScrollBar:vertical {
+    background: #F5F6FA;
+    width: 10px;
+    margin: 0;
+    border-radius: 5px;
+}
+QScrollBar::handle:vertical {
+    background: #BDC3C7;
+    min-height: 30px;
+    border-radius: 5px;
+}
+QScrollBar::handle:vertical:hover { background: #95A5A6; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
+
+QScrollBar:horizontal {
+    background: #F5F6FA;
+    height: 10px;
+    border-radius: 5px;
+}
+QScrollBar::handle:horizontal {
+    background: #BDC3C7;
+    border-radius: 5px;
+}
+QScrollBar::handle:horizontal:hover { background: #95A5A6; }
+
+/* ---------- QSplitter ---------- */
+QSplitter::handle { background-color: #D5D8DC; }
+
+/* ---------- 语义化标签 ---------- */
+QLabel[status="success"] { color: #2ECC71; font-weight: bold; }
+QLabel[status="warning"] { color: #F39C12; font-weight: bold; }
+QLabel[status="error"]   { color: #E74C3C; font-weight: bold; }
+
+/* ---------- 进度条 ---------- */
+QProgressBar {
+    background-color: #ECF0F1;
+    border-radius: 4px;
+    height: 8px;
+    border: none;
+}
+QProgressBar::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #3498DB, stop:1 #2ECC71);
+    border-radius: 4px;
+}
+
+/* ---------- 列表/卡片 (非侧边栏的普通列表) ---------- */
+QListWidget, QListWidget::item {
+    background-color: #FFFFFF;
+    border-radius: 8px;
+    padding: 8px;
+    margin: 4px 0px;
+    border: none;
+}
+
+/* ---------- 图表背景 ---------- */
+QChartView {
+    background-color: #FFFFFF;
+    border: none;
+}
+
+/* ========================================================= */
+/* ---------- 推理工作台专属样式 (Light Theme) ------------- */
+/* ========================================================= */
+
+/* 1. 画布区域：即使在浅色模式，视频/图像画布也应保持深色底色，凸显画面 */
+QLabel#videoCanvas {
+    background-color: #111111;
+    color: #7F8C8D;
+    border: 1px solid #BDC3C7;
+    border-radius: 8px;
+}
+
+/* 2. 推理状态标签动态颜色 (与代码 setProperty 绑定) */
+QLabel[status="normal"]  { color: #3498DB; font-weight: bold; }
+
+/* 3. 滑块控件 (QSlider) 现代扁平化渲染 */
+QSlider::groove:horizontal {
+    border: 1px solid #BDC3C7;
+    height: 6px;
+    background: #ECF0F1;
+    border-radius: 3px;
+}
+QSlider::sub-page:horizontal {
+    background: #3498DB;
+    border-radius: 3px;
+}
+QSlider::handle:horizontal {
+    background: #FFFFFF;
+    border: 2px solid #3498DB;
+    width: 14px;
+    margin: -5px 0; /* 使得圆形拉手垂直居中覆盖在轨道上 */
+    border-radius: 8px;
+}
+QSlider::handle:horizontal:hover {
+    background: #3498DB;
+}
+
+/* 4. 单选框与复选框排版微调 */
+QRadioButton, QCheckBox {
+    spacing: 6px;
+    outline: none;
+}
+QRadioButton::indicator, QCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+}
+
+/* ========================================================= */
+/* ---------- 系统治理/用户管理区 (Light Theme) ------------ */
+/* ========================================================= */
+
+/* 对话框底层背景统一 */
+UserFormDialog {
+    background-color: #F5F6FA;
+}
+
+/* 药丸形(Pill-shape) 高级搜索框 */
+QLineEdit#searchInput {
+    background-color: #FFFFFF;
+    border: 1px solid #BDC3C7;
+    border-radius: 16px; /* 形成两端半圆的药丸效果 */
+    padding: 6px 16px;
+    font-size: 13px;
+}
+
+QLineEdit#searchInput:hover {
+    border-color: #3498DB;
+}
+
+QLineEdit#searchInput:focus {
+    border-color: #3498DB;
+    background-color: #EBF5FB;
+}
+
+/* ---------- 登录窗口专属 ---------- */
+QLabel#loginTitle {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2C3E50;
+    margin-bottom: 20px;
+}
+
+QLineEdit#loginInput {
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    background-color: #FFFFFF;
+    border: 1px solid #D5D8DC;
+}
+QLineEdit#loginInput:focus {
+    border: 2px solid #3498DB;
+}

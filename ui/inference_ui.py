@@ -27,11 +27,13 @@ class InferenceDashboard(QWidget):
 
     def _setup_ui(self):
         main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10) # 增加全局呼吸感
         splitter = QSplitter(Qt.Horizontal)
         
         left_panel = QWidget()
+        left_panel.setObjectName("leftPanel") # 挂载语义化 ID，继承统一底色
         left_layout = QVBoxLayout(left_panel)
-        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setContentsMargins(0, 0, 10, 0)
 
         group_model = QGroupBox("模型配置 (Model Config)")
         form_model = QFormLayout(group_model)
@@ -94,14 +96,17 @@ class InferenceDashboard(QWidget):
         input_row.addWidget(self.btn_load_input)
 
         self.chk_save_res = QCheckBox("持久化输出结果至本地目录")
-        # 默认禁用左上角全选按钮，防止产生歧义
         
         btn_row = QHBoxLayout()
         self.btn_start_task = QPushButton("启动推理 (Start)")
+        self.btn_start_task.setProperty("type", "primary") # 剥离硬编码，交由 QSS 渲染
+        self.btn_start_task.setCursor(Qt.PointingHandCursor)
+        
         self.btn_stop_task = QPushButton("中断任务 (Stop)")
+        self.btn_stop_task.setProperty("type", "danger")
         self.btn_stop_task.setEnabled(False)
-        self.btn_start_task.setStyleSheet("background-color: #2e7d32; color: white; font-weight: bold;")
-        self.btn_stop_task.setStyleSheet("background-color: #c62828; color: white; font-weight: bold;")
+        self.btn_stop_task.setCursor(Qt.PointingHandCursor)
+        
         btn_row.addWidget(self.btn_start_task)
         btn_row.addWidget(self.btn_stop_task)
 
@@ -115,7 +120,7 @@ class InferenceDashboard(QWidget):
         v_monitor = QVBoxLayout(group_monitor)
         
         self.lbl_status = QLabel("状态: 就绪 (Ready)")
-        self.lbl_status.setStyleSheet("color: #1565c0; font-weight: bold;")
+        self.lbl_status.setProperty("status", "normal") # 赋予初始状态
         
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
@@ -134,12 +139,12 @@ class InferenceDashboard(QWidget):
         right_layout.setContentsMargins(0, 0, 0, 0)
 
         self.label_canvas = QLabel("等待数据接入...")
+        self.label_canvas.setObjectName("videoCanvas") # 剥离硬编码背景
         self.label_canvas.setAlignment(Qt.AlignCenter)
-        self.label_canvas.setStyleSheet("background-color: #1e1e1e; color: #757575; border: 1px solid #424242;")
         self.label_canvas.setMinimumSize(640, 480)
         
         self.table_results = QTableWidget(0, 6)
-        self.table_results.setCornerButtonEnabled(False) # 隐藏之前提到的左上角白色方块
+        self.table_results.setCornerButtonEnabled(False) 
         self.table_results.setHorizontalHeaderLabels(["序号", "时间戳", "帧ID", "缺陷分类", "置信度", "坐标 (x1,y1,x2,y2)"])
         self.table_results.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table_results.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -150,12 +155,15 @@ class InferenceDashboard(QWidget):
         right_splitter.addWidget(self.table_results)
         right_splitter.setStretchFactor(0, 7)
         right_splitter.setStretchFactor(1, 3)
+        right_splitter.setHandleWidth(2) # 优化分割线宽度
+        
         right_layout.addWidget(right_splitter)
 
         splitter.addWidget(left_panel)
         splitter.addWidget(right_panel)
         splitter.setStretchFactor(0, 2)
         splitter.setStretchFactor(1, 8)
+        splitter.setHandleWidth(2)
         main_layout.addWidget(splitter)
 
     def _bind_signals(self):
@@ -172,6 +180,12 @@ class InferenceDashboard(QWidget):
         event_bus.inference_error.connect(self._handle_error)
         event_bus.inference_finished.connect(self._reset_ui_state)
         self.table_results.itemSelectionChanged.connect(self._on_table_row_selected)
+
+    def _set_status(self, text, status_type):
+        """统一的状态更新管线，触发 QSS 重绘"""
+        self.lbl_status.setText(text)
+        self.lbl_status.setProperty("status", status_type)
+        self.lbl_status.style().polish(self.lbl_status) # 必须调用 polish 强制刷新样式
 
     def _browse_model(self):
         path, _ = QFileDialog.getOpenFileName(self, "选择模型权重", "", "Model Files (*.pt *.onnx)")
@@ -211,9 +225,9 @@ class InferenceDashboard(QWidget):
 
         self.btn_start_task.setEnabled(False)
         self.btn_stop_task.setEnabled(True)
-        self.lbl_status.setText("状态: 引擎初始化中...")
-        self.lbl_status.setStyleSheet("color: #f57c00; font-weight: bold;")
         self.table_results.setRowCount(0)
+        
+        self._set_status("状态: 引擎初始化中...", "warning")
 
         self.worker = InferenceWorker(config)
         self.worker.start()
@@ -221,13 +235,12 @@ class InferenceDashboard(QWidget):
     def _stop_inference(self):
         if self.worker and self.worker.isRunning():
             self.worker.stop()
-            self.lbl_status.setText("状态: 正在终止线程...")
+            self._set_status("状态: 正在终止线程...", "warning")
 
     @pyqtSlot(bool, str, str)
     def _on_engine_ready(self, status, msg, actual_dir=None):
         if status:
-            self.lbl_status.setText("状态: 推理中 (Running)")
-            self.lbl_status.setStyleSheet("color: #388e3c; font-weight: bold;")
+            self._set_status("状态: 推理中 (Running)", "success")
             if actual_dir:
                 self.actual_output_dir = actual_dir
                 self.current_session_dir = actual_dir 
@@ -249,8 +262,6 @@ class InferenceDashboard(QWidget):
                 self._render_canvas(image_data, detections)
                 self._current_image = image_data.copy()
                 self._current_detections = detections
-            else:
-                print("[Warning] 接收到无效图像数据，画布未刷新。")
 
             for det in detections:
                 row_idx = self.table_results.rowCount()
@@ -292,9 +303,8 @@ class InferenceDashboard(QWidget):
     def _reset_ui_state(self):
         self.btn_start_task.setEnabled(True)
         self.btn_stop_task.setEnabled(False)
-        self.lbl_status.setText("状态: 就绪 (Ready)")
-        self.lbl_status.setStyleSheet("color: #1565c0; font-weight: bold;")
         self.progress_bar.setValue(0)
+        self._set_status("状态: 就绪 (Ready)", "normal")
         
         if self.worker:
             self.worker.deleteLater()
@@ -333,7 +343,6 @@ class InferenceDashboard(QWidget):
                 
                 is_highlighted = False
                 if highlight_bbox:
-                    # 将容差放宽至 0.2，以兼容表格中 :.1f 四舍五入带来的最高 0.05 的误差
                     is_highlighted = all(abs(a - b) < 0.2 for a, b in zip(bbox, highlight_bbox))
                 
                 if is_highlighted:
@@ -364,7 +373,6 @@ class InferenceDashboard(QWidget):
 
         selected_items = self.table_results.selectedItems()
         if not selected_items:
-            # 取消选中时，恢复无高亮的原始状态
             if self._current_image is not None:
                 self._render_canvas(self._current_image, self._current_detections)
             return
@@ -380,26 +388,20 @@ class InferenceDashboard(QWidget):
         bbox_str = item_bbox.text()
         
         try:
-            # 1. 提前解析需要高亮的坐标元组
             nums = re.findall(r"[\d.]+", bbox_str)
             highlight_bbox_tuple = tuple(map(float, nums)) if len(nums) == 4 else None
 
             session_dir = self.actual_output_dir or self.current_session_dir
             
-            # 2. 【核心修复】：如果没有开启持久化，直接使用内存中的当前图像进行高亮重绘
             if not session_dir:
                 if self._current_image is not None:
                     self._render_canvas(self._current_image, self._current_detections, highlight_bbox_str=highlight_bbox_tuple)
-                else:
-                    QMessageBox.information(self, "提示", "未开启持久化保存，且内存中无缓存图像，无法回放。")
                 return
                 
-            # 3. 如果开启了持久化，走原有的磁盘读取逻辑
             frame_id = int(frame_id_str)
             img_path = os.path.join(session_dir, f"frame_{frame_id:06d}.jpg")
             json_path = os.path.join(session_dir, f"frame_{frame_id:06d}.json")
             
-            # 4. 容错处理：如果磁盘文件丢失，尝试降级使用内存数据
             if not os.path.exists(img_path) or not os.path.exists(json_path):
                 if self._current_image is not None:
                     self._render_canvas(self._current_image, self._current_detections, highlight_bbox_str=highlight_bbox_tuple)
@@ -408,9 +410,7 @@ class InferenceDashboard(QWidget):
             img_data = np.fromfile(img_path, dtype=np.uint8)
             img_bgr = cv2.imdecode(img_data, cv2.IMREAD_COLOR)
             
-            if img_bgr is None:
-                QMessageBox.warning(self, "读取错误", f"无法解码图像文件:\n{img_path}")
-                return
+            if img_bgr is None: return
             
             img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
             

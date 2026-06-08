@@ -10,19 +10,24 @@ class UserFormDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("新增系统账号")
-        self.setMinimumWidth(350)
+        self.setMinimumWidth(360)
         self._setup_ui()
 
     def _setup_ui(self):
+        # 增加内边距，提升表单呼吸感
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 20)
+        layout.setSpacing(16)
+        
         form_layout = QFormLayout()
+        form_layout.setSpacing(12)
 
         self.input_username = QLineEdit()
         self.input_username.setPlaceholderText("输入唯一登录名...")
         
         self.input_password = QLineEdit()
         self.input_password.setPlaceholderText("输入初始密码...")
-        self.input_password.setEchoMode(QLineEdit.Password) # 开启密码遮罩
+        self.input_password.setEchoMode(QLineEdit.Password) 
         
         self.combo_role = QComboBox()
         self.combo_role.addItems(["user", "admin"])
@@ -34,6 +39,16 @@ class UserFormDialog(QDialog):
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
+        
+        # 拦截原生对话框按钮并注入我们的语义化 QSS 属性
+        btn_ok = self.button_box.button(QDialogButtonBox.Ok)
+        btn_ok.setText("确认分配")
+        btn_ok.setProperty("type", "primary")
+        btn_ok.setCursor(Qt.PointingHandCursor)
+        
+        btn_cancel = self.button_box.button(QDialogButtonBox.Cancel)
+        btn_cancel.setText("取消")
+        btn_cancel.setCursor(Qt.PointingHandCursor)
 
         layout.addLayout(form_layout)
         layout.addWidget(self.button_box)
@@ -50,23 +65,30 @@ class UserManagementDashboard(QWidget):
     def __init__(self, current_user_id):
         super().__init__()
         self.db = DatabaseManager()
-        self.current_user_id = current_user_id  # 注入当前上下文 ID，用于防自杀拦截
+        self.current_user_id = current_user_id  
         self._setup_ui()
         self._load_users()
 
     def _setup_ui(self):
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(16)
         
         # 1. 顶部控制台 (过滤与操作)
         top_layout = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("模糊搜索: 账号或角色...")
+        self.search_input.setObjectName("searchInput") # 挂载专属 ID 以便 QSS 定制
+        self.search_input.setPlaceholderText("🔍 模糊搜索: 账号或角色...")
+        self.search_input.setMinimumWidth(280)
         self.search_input.textChanged.connect(self._filter_users)
         
         self.btn_add = QPushButton("新增分配")
-        self.btn_add.setStyleSheet("background-color: #2e7d32; color: white;")
+        self.btn_add.setProperty("type", "primary") # 剥离硬编码，交由 QSS 接管
+        self.btn_add.setCursor(Qt.PointingHandCursor)
+        
         self.btn_delete = QPushButton("安全回收 (删除)")
-        self.btn_delete.setStyleSheet("background-color: #c62828; color: white;") 
+        self.btn_delete.setProperty("type", "danger") # 剥离硬编码，交由 QSS 接管
+        self.btn_delete.setCursor(Qt.PointingHandCursor)
         
         top_layout.addWidget(self.search_input)
         top_layout.addStretch()
@@ -80,30 +102,25 @@ class UserManagementDashboard(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers) # 台账禁直接编辑
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers) 
         self.table.setSortingEnabled(True)
+        self.table.setCornerButtonEnabled(False)
         
         layout.addLayout(top_layout)
         layout.addWidget(self.table)
-        self.setLayout(layout)
-        
-        # 信号绑定
+
         self.btn_add.clicked.connect(self._add_user)
         self.btn_delete.clicked.connect(self._safe_delete_user)
 
     def _load_users(self):
-        """全量加载并渲染用户台账，处理空值回退"""
         try:
-            # 依赖后端 database.py 实现的 get_all_users() 方法
             user_list = self.db.get_all_users()
-            
-            self.table.setSortingEnabled(False) # 填充时关闭排序优化性能
+            self.table.setSortingEnabled(False) 
             self.table.setRowCount(0)
             
             for row, user in enumerate(user_list):
                 self.table.insertRow(row)
                 
-                # 适配字段可能为空的情况
                 last_login = user.get('last_login')
                 last_login_str = str(last_login) if last_login else "从未登录"
                 created_at = user.get('created_at')
@@ -126,7 +143,6 @@ class UserManagementDashboard(QWidget):
             event_bus.db_error.emit(f"读取用户台账失败: {str(e)}")
 
     def _filter_users(self, keyword):
-        """本地内存级模糊搜索，零延迟过滤"""
         keyword = keyword.lower()
         for row in range(self.table.rowCount()):
             match = False
@@ -138,21 +154,18 @@ class UserManagementDashboard(QWidget):
             self.table.setRowHidden(row, not match)
 
     def _add_user(self):
-        """弹出表单收集数据并执行写库操作"""
         dialog = UserFormDialog(self)
         if dialog.exec_() == QDialog.Accepted:
             data = dialog.get_form_data()
             
-            # 前端数据基础校验
             if not data['username'] or not data['password']:
                 QMessageBox.warning(self, "输入无效", "账号与密码不能为空。")
                 return
                 
             try:
-                # 依赖后端 database.py 实现的 add_user() 方法
                 success = self.db.add_user(data['username'], data['password'], data['role'])
                 if success:
-                    self._load_users() # 同步刷新视图
+                    self._load_users() 
                     QMessageBox.information(self, "操作成功", f"用户 [{data['username']}] 已创建。")
                 else:
                     QMessageBox.warning(self, "操作失败", "可能账号已存在，请检查输入。")
@@ -160,7 +173,6 @@ class UserManagementDashboard(QWidget):
                 event_bus.db_error.emit(f"写入新用户失败: {str(e)}")
 
     def _safe_delete_user(self):
-        """包含防呆验证与自杀拦截的删除事务"""
         selected = self.table.selectedItems()
         if not selected:
             return
@@ -168,20 +180,17 @@ class UserManagementDashboard(QWidget):
         target_id = int(self.table.item(selected[0].row(), 0).text())
         target_name = self.table.item(selected[0].row(), 1).text()
         
-        # 致命逻辑拦截：禁止删除当前活跃账号
         if target_id == self.current_user_id:
             QMessageBox.critical(self, "越权拦截", "系统拒绝执行：禁止在此会话中注销/删除当前高权账号自身。")
             return
             
-        # 二次防呆确认
         reply = QMessageBox.warning(self, '高危操作确认', 
                                      f"即将永久清除资产账户 [{target_name}] 的所有授权，此操作不可逆。是否继续？",
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                                      
         if reply == QMessageBox.Yes:
             try:
-                # 依赖后端 database.py 实现的 delete_user() 方法
                 self.db.delete_user(target_id)
-                self._load_users() # 同步刷新视图
+                self._load_users() 
             except Exception as e:
                 event_bus.db_error.emit(f"删除账户失败: {str(e)}")
