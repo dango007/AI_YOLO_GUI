@@ -98,6 +98,16 @@ class ApplicationController:
             qss_file = self.themes_dir / "dark_theme.qss"
             ThemeManager.load_theme(self.app, str(qss_file))
 
+    def resource_path(relative_path):
+        """获取资源的绝对路径，兼容开发环境和 PyInstaller 打包后的环境"""
+        if hasattr(sys, '_MEIPASS'):
+            # 打包后，资源会被解压到 sys._MEIPASS 指向的临时文件夹
+            base_path = sys._MEIPASS
+        else:
+            # 开发环境下，资源就在当前文件的目录下
+            base_path = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(base_path, relative_path)
+
 
 if __name__ == "__main__":
     controller = ApplicationController()

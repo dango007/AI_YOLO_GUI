@@ -144,6 +144,8 @@ class ResultAnalysisDashboard(QWidget):
 
         try:
             real_data = self.db.get_analysis_data(start_date, end_date, type_filter)
+            # ======= 核心修复 1：将当前的筛选状态注入数据包中传递给渲染层 =======
+            real_data['current_filter'] = type_filter
             self.update_dashboard(real_data)
         except Exception as e:
             event_bus.db_error.emit(f"聚合查询执行失败: {str(e)}")
@@ -157,6 +159,24 @@ class ResultAnalysisDashboard(QWidget):
         self._render_pie_chart(distribution)
 
         rows = data_payload.get("history_rows", [])
+        # 获取注入的过滤状态，默认为全部
+        current_filter = data_payload.get("current_filter", "全部 (All)")
+
+        # ======= 核心修复 2：建立动态高亮列的映射规则 =======
+        highlight_cols = []
+        if "全部" in current_filter or "All" in current_filter:
+            # 如果是全部，高亮所有 6 种缺陷列 (索引 3 到 8)
+            highlight_cols = [3, 4, 5, 6, 7, 8]
+        else:
+            # 如果是特定缺陷，精准定位对应列
+            if "crazing" in current_filter: highlight_cols = [3]
+            elif "inclusion" in current_filter: highlight_cols = [4]
+            elif "patches" in current_filter: highlight_cols = [5]
+            elif "pitted_surface" in current_filter: highlight_cols = [6]
+            elif "rolled-in_scale" in current_filter: highlight_cols = [7]
+            elif "scratches" in current_filter: highlight_cols = [8]
+        # ====================================================
+
         self.table_history.setSortingEnabled(False)
         self.table_history.setRowCount(0)
 
@@ -165,9 +185,12 @@ class ResultAnalysisDashboard(QWidget):
             for c_idx, cell_value in enumerate(row_data):
                 item = QTableWidgetItem(str(cell_value))
                 item.setTextAlignment(Qt.AlignCenter)
-                if c_idx == 5 and str(cell_value).isdigit() and int(cell_value) > 0:
-                    item.setForeground(QColor(211, 47, 47))
+                
+                # ======= 核心修复 3：使用动态计算出的 highlight_cols 进行判定 =======
+                if c_idx in highlight_cols and str(cell_value).isdigit() and int(cell_value) > 0:
+                    item.setForeground(QColor(211, 47, 47)) # 警示红
                     item.setFont(QFont("Arial", 10, QFont.Bold))
+                    
                 self.table_history.setItem(r_idx, c_idx, item)
 
         self.table_history.setSortingEnabled(True)
